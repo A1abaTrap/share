@@ -40,234 +40,261 @@
     </main>
 
     <script>
-        let peer;
-        let conn;
-        let myStream;
-        let currentCall;
+  let peer;
+let conn;
+let myStream;
+let currentCall;
 
-        const myId = document.getElementById('myId');
-        const copyBtn = document.getElementById('copyBtn');
-        const remoteIdInput = document.getElementById('remoteId');
-        const connectBtn = document.getElementById('connectBtn');
-        const shareScreenBtn = document.getElementById('shareScreenBtn');
-        const video = document.querySelector('video');
-        const form = document.querySelector('form');
+const myId = document.getElementById('myId');
+const copyBtn = document.getElementById('copyBtn');
+const remoteIdInput = document.getElementById('remoteId');
+const connectBtn = document.getElementById('connectBtn');
+const shareScreenBtn = document.getElementById('shareScreenBtn');
+const video = document.querySelector('video');
+const form = document.querySelector('form');
 
-        function initPeer() {
-            peer = new Peer();
-
-            peer.on('open', (id) => {
-                myId.textContent = id;
-            });
-
-            peer.on('call', (call) => {
-                currentCall = call;
-                call.answer();
-                call.on('stream', (remoteStream) => {
-                    video.srcObject = remoteStream;
-                    updateScreenShareStatus(true);
-                });
-            });
-
-            peer.on('connection', handleIncomingConnection);
-            peer.on('disconnected', resetConnection);
-            peer.on('close', resetConnection);
-            peer.on('error', handlePeerError);
-        }
-
-        function handleConnectionAttempt(e) {
-            e.preventDefault();
-
-            if (conn) {
-                conn.close();
-                resetConnection();
-            } else {
-                if (peer.disconnected) {
-                    peer.reconnect();
+// Khởi tạo PeerJS với cấu hình STUN/TURN
+function initPeer() {
+    peer = new Peer({
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }, // Máy chủ STUN miễn phí
+                {
+                    urls: 'turn:your.turn.server:3478', // Máy chủ TURN (tùy chọn)
+                    username: 'username',
+                    credential: 'password'
                 }
+            ]
+        }
+    });
 
-                conn = peer.connect(remoteIdInput.value);
-                conn.on('open', () => {
-                    updateConnectionStatus(true);
-                    setupControlEvents(); // Lắng nghe các sự kiện điều khiển
-                });
-                conn.on('error', (err) => {
-                    console.error('Lỗi kết nối:', err);
-                    resetConnection();
-                });
-                conn.on('data', handleDataReceived);
-            }
+    peer.on('open', (id) => {
+        myId.textContent = id;
+    });
+
+    peer.on('call', (call) => {
+        currentCall = call;
+        call.answer();
+        call.on('stream', (remoteStream) => {
+            video.srcObject = remoteStream;
+            updateScreenShareStatus(true);
+        });
+    });
+
+    peer.on('connection', handleIncomingConnection);
+    peer.on('disconnected', resetConnection);
+    peer.on('close', resetConnection);
+    peer.on('error', handlePeerError);
+}
+
+// Xử lý kết nối đến thiết bị khác
+function handleConnectionAttempt(e) {
+    e.preventDefault();
+
+    if (conn) {
+        conn.close();
+        resetConnection();
+    } else {
+        if (peer.disconnected) {
+            peer.reconnect();
         }
 
-        function handleIncomingConnection(connection) {
-            if (conn) {
-                connection.close();
-                return;
-            }
-            conn = connection;
+        conn = peer.connect(remoteIdInput.value);
+        conn.on('open', () => {
             updateConnectionStatus(true);
-            conn.on('close', () => {
-                resetConnection();
-            });
-            conn.on('data', handleDataReceived);
-        }
+            setupControlEvents(); // Lắng nghe sự kiện điều khiển từ xa
+        });
+        conn.on('error', (err) => {
+            console.error('Lỗi kết nối:', err);
+            resetConnection();
+        });
+        conn.on('data', handleDataReceived);
+    }
+}
 
-        function handleDataReceived(data) {
-            if (data.type === 'stopScreenShare') {
-                stopScreenSharing();
-            } else if (data.type === 'mouseMove') {
-                simulateMouseMove(data.xPercent, data.yPercent);
-            } else if (data.type === 'mouseClick') {
-                simulateMouseClick();
-            } else if (data.type === 'keyDown') {
-                simulateKeyDown(data.key);
-            } else if (data.type === 'keyUp') {
-                simulateKeyUp(data.key);
+// Xử lý kết nối từ thiết bị khác
+function handleIncomingConnection(connection) {
+    if (conn) {
+        connection.close();
+        return;
+    }
+    conn = connection;
+    updateConnectionStatus(true);
+    conn.on('close', () => {
+        resetConnection();
+    });
+    conn.on('data', handleDataReceived);
+}
+
+// Nhận và xử lý dữ liệu từ kết nối
+function handleDataReceived(data) {
+    if (data.type === 'stopScreenShare') {
+        stopScreenSharing();
+    } else if (data.type === 'mouseMove') {
+        simulateMouseMove(data.xPercent, data.yPercent);
+    } else if (data.type === 'mouseClick') {
+        simulateMouseClick();
+    } else if (data.type === 'keyDown') {
+        simulateKeyDown(data.key);
+    } else if (data.type === 'keyUp') {
+        simulateKeyUp(data.key);
+    }
+}
+
+// Chia sẻ màn hình
+async function handleScreenSharing() {
+    if (myStream) {
+        stopScreenSharing();
+        if (conn) {
+            conn.send({ type: 'stopScreenShare' });
+        }
+    } else {
+        try {
+            myStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            if (conn) {
+                currentCall = peer.call(conn.peer, myStream);
             }
-        }
-
-        async function handleScreenSharing() {
-            if (myStream) {
+            myStream.getVideoTracks()[0].onended = () => {
                 stopScreenSharing();
                 if (conn) {
                     conn.send({ type: 'stopScreenShare' });
                 }
-            } else {
-                try {
-                    myStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                    if (conn) {
-                        currentCall = peer.call(conn.peer, myStream);
-                    }
-                    myStream.getVideoTracks()[0].onended = () => {
-                        stopScreenSharing();
-                        if (conn) {
-                            conn.send({ type: 'stopScreenShare' });
-                        }
-                    };
-                } catch (error) {
-                    console.error("Lỗi khi chia sẻ màn hình:", error);
-                }
-            }
+            };
+        } catch (error) {
+            console.error("Lỗi khi chia sẻ màn hình:", error);
         }
+    }
+}
 
-        function setupControlEvents() {
-            video.addEventListener('mousemove', (e) => {
-                if (conn) {
-                    const rect = video.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
+// Thiết lập lắng nghe sự kiện điều khiển
+function setupControlEvents() {
+    video.addEventListener('mousemove', (e) => {
+        if (conn) {
+            const rect = video.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
-                    conn.send({
-                        type: 'mouseMove',
-                        xPercent: x / rect.width,
-                        yPercent: y / rect.height
-                    });
-                }
-            });
-
-            video.addEventListener('click', () => {
-                if (conn) {
-                    conn.send({ type: 'mouseClick' });
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (conn) {
-                    conn.send({ type: 'keyDown', key: e.key });
-                }
-            });
-
-            document.addEventListener('keyup', (e) => {
-                if (conn) {
-                    conn.send({ type: 'keyUp', key: e.key });
-                }
+            conn.send({
+                type: 'mouseMove',
+                xPercent: x / rect.width,
+                yPercent: y / rect.height
             });
         }
+    });
 
-        function simulateMouseMove(xPercent, yPercent) {
-            const event = new MouseEvent('mousemove', {
-                clientX: window.innerWidth * xPercent,
-                clientY: window.innerHeight * yPercent
-            });
-            document.dispatchEvent(event);
+    video.addEventListener('click', () => {
+        if (conn) {
+            conn.send({ type: 'mouseClick' });
         }
+    });
 
-        function simulateMouseClick() {
-            const event = new MouseEvent('click');
-            document.dispatchEvent(event);
+    document.addEventListener('keydown', (e) => {
+        if (conn) {
+            conn.send({ type: 'keyDown', key: e.key });
         }
+    });
 
-        function simulateKeyDown(key) {
-            const event = new KeyboardEvent('keydown', { key });
-            document.dispatchEvent(event);
+    document.addEventListener('keyup', (e) => {
+        if (conn) {
+            conn.send({ type: 'keyUp', key: e.key });
         }
+    });
+}
 
-        function simulateKeyUp(key) {
-            const event = new KeyboardEvent('keyup', { key });
-            document.dispatchEvent(event);
-        }
+// Mô phỏng các sự kiện chuột và bàn phím
+function simulateMouseMove(xPercent, yPercent) {
+    const event = new MouseEvent('mousemove', {
+        clientX: window.innerWidth * xPercent,
+        clientY: window.innerHeight * yPercent
+    });
+    document.dispatchEvent(event);
+}
 
-        function updateConnectionStatus(isConnected) {
-            connectBtn.textContent = isConnected ? 'Ngừng kết nối' : 'Kết nối';
-            shareScreenBtn.disabled = !isConnected;
-            remoteIdInput.disabled = isConnected;
+function simulateMouseClick() {
+    const event = new MouseEvent('click');
+    document.dispatchEvent(event);
+}
 
-            if (isConnected) {
-                shareScreenBtn.hidden = false;
-            }
-        }
+function simulateKeyDown(key) {
+    const event = new KeyboardEvent('keydown', { key });
+    document.dispatchEvent(event);
+}
 
-        function updateScreenShareStatus(isSharing) {
-            shareScreenBtn.textContent = isSharing ? 'Dừng chia sẻ' : 'Chia sẻ màn hình';
-        }
+function simulateKeyUp(key) {
+    const event = new KeyboardEvent('keyup', { key });
+    document.dispatchEvent(event);
+}
 
-        function resetConnection() {
-            if (conn) {
-                conn.close();
-            }
-            if (currentCall) {
-                currentCall.close();
-            }
-            conn = null;
-            currentCall = null;
-            updateConnectionStatus(false);
-            stopScreenSharing();
-        }
+// Cập nhật trạng thái kết nối
+function updateConnectionStatus(isConnected) {
+    connectBtn.textContent = isConnected ? 'Ngừng kết nối' : 'Kết nối';
+    shareScreenBtn.disabled = !isConnected;
+    remoteIdInput.disabled = isConnected;
 
-        function stopScreenSharing() {
-            if (myStream) {
-                myStream.getTracks().forEach(track => track.stop());
-                myStream = null;
-            }
-            video.srcObject = null;
-            updateScreenShareStatus(false);
-        }
+    if (isConnected) {
+        shareScreenBtn.hidden = false;
+    }
+}
 
-        function handlePeerError(err) {
-            console.error('Lỗi Peer:', err);
-            resetConnection();
+// Cập nhật trạng thái chia sẻ màn hình
+function updateScreenShareStatus(isSharing) {
+    shareScreenBtn.textContent = isSharing ? 'Dừng chia sẻ' : 'Chia sẻ màn hình';
+}
 
-            if (err.type === 'network' || err.type === 'disconnected') {
-                initPeer();
-            }
-        }
+// Reset kết nối
+function resetConnection() {
+    if (conn) {
+        conn.close();
+    }
+    if (currentCall) {
+        currentCall.close();
+    }
+    conn = null;
+    currentCall = null;
+    updateConnectionStatus(false);
+    stopScreenSharing();
+}
 
-        copyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            navigator.clipboard.writeText(myId.textContent)
-                .then(() => {
-                    copyBtn.textContent = 'Đã sao chép';
-                    setTimeout(() => {
-                        copyBtn.textContent = 'Sao chép';
-                    }, 3000);
-                })
-                .catch(err => console.error('Lỗi khi sao chép:', err));
-        });
+// Dừng chia sẻ màn hình
+function stopScreenSharing() {
+    if (myStream) {
+        myStream.getTracks().forEach(track => track.stop());
+        myStream = null;
+    }
+    video.srcObject = null;
+    updateScreenShareStatus(false);
+}
 
-        form.addEventListener('submit', handleConnectionAttempt);
-        shareScreenBtn.addEventListener('click', handleScreenSharing);
+// Xử lý lỗi PeerJS
+function handlePeerError(err) {
+    console.error('Lỗi Peer:', err);
+    resetConnection();
 
+    if (err.type === 'network' || err.type === 'disconnected') {
         initPeer();
+    }
+}
+
+// Sao chép ID người dùng
+copyBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(myId.textContent)
+        .then(() => {
+            copyBtn.textContent = 'Đã sao chép';
+            setTimeout(() => {
+                copyBtn.textContent = 'Sao chép';
+            }, 3000);
+        })
+        .catch(err => console.error('Lỗi khi sao chép:', err));
+});
+
+// Sự kiện trên form và nút chia sẻ màn hình
+form.addEventListener('submit', handleConnectionAttempt);
+shareScreenBtn.addEventListener('click', handleScreenSharing);
+
+// Khởi tạo PeerJS
+initPeer();
+
     </script>
 </body>
 
