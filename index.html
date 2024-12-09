@@ -3,23 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Button Press Example</title>
+  <title>Điều khiển đèn từ 2 công tắc</title>
   
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-database.js"></script>
 </head>
 <body>
-  <h1>Firebase Button Press Example</h1>
+  <h1>Điều khiển đèn từ 2 công tắc</h1>
 
-  <!-- Nút bấm trên máy tính -->
-  <button id="pressButton">Bấm nút</button>
+  <!-- Công tắc 1 (Có thể là công tắc trên máy tính) -->
+  <button id="switchButton1">Công tắc 1 (Bật/Tắt Đèn)</button>
 
-  <!-- Thông báo hiển thị khi nút được bấm -->
-  <div id="notification" style="margin-top: 20px; font-size: 20px; color: green;"></div>
+  <!-- Công tắc 2 (Có thể là công tắc trên điện thoại) -->
+  <button id="switchButton2">Công tắc 2 (Bật/Tắt Đèn)</button>
+
+  <!-- Hiển thị trạng thái đèn -->
+  <div id="lightStatus" style="margin-top: 20px; font-size: 20px; color: green;">
+    Đèn: Tắt
+  </div>
 
   <script>
-    // Your Firebase configuration
+    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyC9G-eMSnO8RRPLLnFfWcsHTYMp24EGbWY",
       authDomain: "share-14a03.firebaseapp.com",
@@ -34,29 +39,38 @@
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database(app);
 
-    // Tham chiếu đến đường dẫn trong Realtime Database
-    const buttonPressRef = database.ref('buttonPress');
+    // Tham chiếu đến trạng thái đèn trong Firebase
+    const lightRef = database.ref('lightStatus');
 
-    // Lắng nghe thay đổi trạng thái buttonPress
-    buttonPressRef.on('value', (snapshot) => {
+    // Lắng nghe thay đổi trạng thái đèn
+    lightRef.on('value', (snapshot) => {
       const status = snapshot.val();
-      const notification = document.getElementById('notification');
+      const lightStatus = document.getElementById('lightStatus');
       if (status === true) {
-        notification.textContent = 'Điện thoại đã bấm nút!';
+        lightStatus.textContent = 'Đèn: Sáng';
+        lightStatus.style.color = 'green';
       } else {
-        notification.textContent = '';
+        lightStatus.textContent = 'Đèn: Tắt';
+        lightStatus.style.color = 'red';
       }
     });
 
-    // Xử lý sự kiện nhấn nút trên máy tính
-    document.getElementById('pressButton').addEventListener('click', () => {
-      // Cập nhật trạng thái nút đã được bấm trên Firebase
-      buttonPressRef.set(true);
-      
-      // Đặt lại trạng thái sau 2 giây (giống như người dùng đã bấm xong)
-      setTimeout(() => {
-        buttonPressRef.set(false);
-      }, 2000);
+    // Xử lý công tắc 1 (bật/tắt đèn)
+    document.getElementById('switchButton1').addEventListener('click', () => {
+      // Lấy trạng thái hiện tại của đèn và đổi lại
+      lightRef.get().then((snapshot) => {
+        const currentStatus = snapshot.val();
+        lightRef.set(!currentStatus); // Đảo trạng thái của đèn
+      });
+    });
+
+    // Xử lý công tắc 2 (bật/tắt đèn)
+    document.getElementById('switchButton2').addEventListener('click', () => {
+      // Lấy trạng thái hiện tại của đèn và đổi lại
+      lightRef.get().then((snapshot) => {
+        const currentStatus = snapshot.val();
+        lightRef.set(!currentStatus); // Đảo trạng thái của đèn
+      });
     });
   </script>
 </body>
