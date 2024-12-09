@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.jade.min.css" />
-    <title>Chia sẻ màn hình & Điều khiển</title>
+    <title>Chia sẻ màn hình và điều khiển</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <style>
         video {
@@ -29,7 +29,7 @@
 
 <body>
     <main class="container">
-        <h1>Demo: Chia sẻ màn hình & Điều khiển</h1>
+        <h1>Demo: Chia sẻ màn hình và điều khiển từ xa</h1>
         <p>ID của bạn: <span id="myId">...</span> <a href="#" id="copyBtn">Sao chép</a></p>
         <form action="#" method="post">
             <input type="text" id="remoteId" placeholder="Nhập ID để kết nối" required autofocus>
@@ -40,7 +40,10 @@
     </main>
 
     <script>
-        let peer, conn, myStream, currentCall;
+        let peer;
+        let conn;
+        let myStream;
+        let currentCall;
 
         const myId = document.getElementById('myId');
         const copyBtn = document.getElementById('copyBtn');
@@ -74,6 +77,7 @@
 
         function handleConnectionAttempt(e) {
             e.preventDefault();
+
             if (conn) {
                 conn.close();
                 resetConnection();
@@ -85,6 +89,7 @@
                 conn = peer.connect(remoteIdInput.value);
                 conn.on('open', () => {
                     updateConnectionStatus(true);
+                    setupControlEvents(); // Lắng nghe các sự kiện điều khiển
                 });
                 conn.on('error', (err) => {
                     console.error('Lỗi kết nối:', err);
@@ -107,6 +112,20 @@
             conn.on('data', handleDataReceived);
         }
 
+        function handleDataReceived(data) {
+            if (data.type === 'stopScreenShare') {
+                stopScreenSharing();
+            } else if (data.type === 'mouseMove') {
+                simulateMouseMove(data.xPercent, data.yPercent);
+            } else if (data.type === 'mouseClick') {
+                simulateMouseClick();
+            } else if (data.type === 'keyDown') {
+                simulateKeyDown(data.key);
+            } else if (data.type === 'keyUp') {
+                simulateKeyUp(data.key);
+            }
+        }
+
         async function handleScreenSharing() {
             if (myStream) {
                 stopScreenSharing();
@@ -116,12 +135,9 @@
             } else {
                 try {
                     myStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                    video.srcObject = myStream;
                     if (conn) {
                         currentCall = peer.call(conn.peer, myStream);
                     }
-                    updateScreenShareStatus(true);
-
                     myStream.getVideoTracks()[0].onended = () => {
                         stopScreenSharing();
                         if (conn) {
@@ -132,6 +148,63 @@
                     console.error("Lỗi khi chia sẻ màn hình:", error);
                 }
             }
+        }
+
+        function setupControlEvents() {
+            video.addEventListener('mousemove', (e) => {
+                if (conn) {
+                    const rect = video.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    conn.send({
+                        type: 'mouseMove',
+                        xPercent: x / rect.width,
+                        yPercent: y / rect.height
+                    });
+                }
+            });
+
+            video.addEventListener('click', () => {
+                if (conn) {
+                    conn.send({ type: 'mouseClick' });
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (conn) {
+                    conn.send({ type: 'keyDown', key: e.key });
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (conn) {
+                    conn.send({ type: 'keyUp', key: e.key });
+                }
+            });
+        }
+
+        function simulateMouseMove(xPercent, yPercent) {
+            const event = new MouseEvent('mousemove', {
+                clientX: window.innerWidth * xPercent,
+                clientY: window.innerHeight * yPercent
+            });
+            document.dispatchEvent(event);
+        }
+
+        function simulateMouseClick() {
+            const event = new MouseEvent('click');
+            document.dispatchEvent(event);
+        }
+
+        function simulateKeyDown(key) {
+            const event = new KeyboardEvent('keydown', { key });
+            document.dispatchEvent(event);
+        }
+
+        function simulateKeyUp(key) {
+            const event = new KeyboardEvent('keyup', { key });
+            document.dispatchEvent(event);
         }
 
         function updateConnectionStatus(isConnected) {
@@ -179,45 +252,6 @@
             }
         }
 
-        function handleDataReceived(data) {
-            switch (data.type) {
-                case 'mouseMove':
-                    simulateMouseMove(data.x, data.y);
-                    break;
-                case 'mouseDown':
-                    simulateMouseDown(data.button);
-                    break;
-                case 'mouseUp':
-                    simulateMouseUp(data.button);
-                    break;
-                case 'keyDown':
-                    simulateKeyPress(data.key, true);
-                    break;
-                case 'keyUp':
-                    simulateKeyPress(data.key, false);
-                    break;
-                case 'stopScreenShare':
-                    stopScreenSharing();
-                    break;
-            }
-        }
-
-        function simulateMouseMove(x, y) {
-            console.log(`Mouse moved by (${x}, ${y})`);
-        }
-
-        function simulateMouseDown(button) {
-            console.log(`Mouse button ${button} pressed`);
-        }
-
-        function simulateMouseUp(button) {
-            console.log(`Mouse button ${button} released`);
-        }
-
-        function simulateKeyPress(key, isDown) {
-            console.log(`Key ${key} ${isDown ? 'pressed' : 'released'}`);
-        }
-
         copyBtn.addEventListener('click', (e) => {
             e.preventDefault();
             navigator.clipboard.writeText(myId.textContent)
@@ -231,7 +265,6 @@
         });
 
         form.addEventListener('submit', handleConnectionAttempt);
-
         shareScreenBtn.addEventListener('click', handleScreenSharing);
 
         initPeer();
