@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.jade.min.css" />
-    <title>JUNO_OKYO</title>
+    <title>Demo: Chia sẻ màn hình và Điều khiển</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <style>
         video {
@@ -29,7 +29,7 @@
 
 <body>
     <main class="container">
-        <h1>Demo: Chia sẻ màn hình</h1>
+        <h1>Demo: Chia sẻ màn hình và Điều khiển</h1>
         <p>ID của bạn: <span id="myId">...</span> <a href="#" id="copyBtn">Sao chép</a></p>
         <form action="#" method="post">
             <input type="text" id="remoteId" placeholder="Nhập ID để kết nối" required autofocus>
@@ -63,25 +63,21 @@
             return result;
         }
 
-        // Cải thiện cấu hình PeerJS để giảm độ trễ và tăng tốc độ kết nối
+        // Khởi tạo PeerJS với cấu hình tùy chỉnh
         function initPeer() {
             const customId = generateRandomId(8);
             myId.textContent = customId;
 
-            // Cấu hình PeerJS với các máy chủ STUN và TURN
             peer = new Peer(customId, {
                 config: {
                     iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' }, // Máy chủ STUN miễn phí
+                        { urls: 'stun:stun.l.google.com:19302' }, // STUN server
                         {
-                            urls: 'turn:your.turn.server:3478', // Máy chủ TURN (tùy chọn)
+                            urls: 'turn:your.turn.server:3478', // TURN server (tùy chọn)
                             username: 'username',
                             credential: 'password'
                         }
-                    ],
-                    host: 'localhost',  // Tăng tốc kết nối
-                    port: 9000,         // Tăng tốc kết nối
-                    secure: true         // Kết nối bảo mật
+                    ]
                 }
             });
 
@@ -294,6 +290,7 @@
         });
 
         form.addEventListener('submit', handleConnectionAttempt);
+
         shareScreenBtn.addEventListener('click', handleScreenSharing);
 
         initPeer();
