@@ -1,300 +1,63 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.jade.min.css" />
-    <title>Demo: Chia sẻ màn hình và Điều khiển</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-    <style>
-        video {
-            max-width: 100%;
-            margin-top: 20px;
-            display: block;
-        }
-
-        #copyBtn {
-            text-decoration: none;
-            border: 1px solid #47fe87;
-            border-radius: 5px;
-            padding: 3px 8px;
-            background-color: #285236;
-            color: #fff;
-            font-size: 0.8rem;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Button Press Example</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-database.js"></script>
 </head>
-
 <body>
-    <main class="container">
-        <h1>Demo: Chia sẻ màn hình và Điều khiển</h1>
-        <p>ID của bạn: <span id="myId">...</span> <a href="#" id="copyBtn">Sao chép</a></p>
-        <form action="#" method="post">
-            <input type="text" id="remoteId" placeholder="Nhập ID để kết nối" required autofocus>
-            <button type="submit" id="connectBtn">Kết nối</button>
-        </form>
-        <button id="shareScreenBtn" disabled hidden>Chia sẻ màn hình</button>
-        <video autoplay></video>
-    </main>
+  <h1>Firebase Button Press Example</h1>
 
-    <script>
-        let peer;
-        let conn;
-        let myStream;
-        let currentCall;
+  <!-- Nút bấm trên máy tính -->
+  <button id="pressButton">Bấm nút</button>
 
-        const myId = document.getElementById('myId');
-        const copyBtn = document.getElementById('copyBtn');
-        const remoteIdInput = document.getElementById('remoteId');
-        const connectBtn = document.getElementById('connectBtn');
-        const shareScreenBtn = document.getElementById('shareScreenBtn');
-        const video = document.querySelector('video');
-        const form = document.querySelector('form');
+  <!-- Thông báo hiển thị khi nút được bấm -->
+  <div id="notification" style="margin-top: 20px; font-size: 20px; color: green;"></div>
 
-        // Tạo ID ngẫu nhiên với 8 ký tự
-        function generateRandomId(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
+  <script>
+    // Your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9G-eMSnO8RRPLLnFfWcsHTYMp24EGbWY",
+      authDomain: "share-14a03.firebaseapp.com",
+      projectId: "share-14a03",
+      storageBucket: "share-14a03.appspot.com",
+      messagingSenderId: "722957991228",
+      appId: "1:722957991228:web:9a82b6f59d3ca5a80fb239",
+      measurementId: "G-1GXYDS7X7W"
+    };
 
-        // Khởi tạo PeerJS với cấu hình tùy chỉnh
-        function initPeer() {
-            const customId = generateRandomId(8);
-            myId.textContent = customId;
+    // Khởi tạo Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
 
-            peer = new Peer(customId, {
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' }, // STUN server
-                        {
-                            urls: 'turn:your.turn.server:3478', // TURN server (tùy chọn)
-                            username: 'username',
-                            credential: 'password'
-                        }
-                    ]
-                }
-            });
+    // Tham chiếu đến đường dẫn trong Realtime Database
+    const buttonPressRef = database.ref('buttonPress');
 
-            peer.on('open', (id) => {
-                myId.textContent = id;
-            });
+    // Lắng nghe thay đổi trạng thái buttonPress
+    buttonPressRef.on('value', (snapshot) => {
+      const status = snapshot.val();
+      const notification = document.getElementById('notification');
+      if (status === true) {
+        notification.textContent = 'Điện thoại đã bấm nút!';
+      } else {
+        notification.textContent = '';
+      }
+    });
 
-            peer.on('call', (call) => {
-                currentCall = call;
-                call.answer();
-                call.on('stream', (remoteStream) => {
-                    video.srcObject = remoteStream;
-                    updateScreenShareStatus(true);
-                });
-            });
-
-            peer.on('connection', handleIncomingConnection);
-            peer.on('disconnected', resetConnection);
-            peer.on('close', resetConnection);
-            peer.on('error', handlePeerError);
-        }
-
-        function handleConnectionAttempt(e) {
-            e.preventDefault();
-
-            if (conn) {
-                conn.close();
-                resetConnection();
-            } else {
-                if (peer.disconnected) {
-                    peer.reconnect();
-                }
-
-                conn = peer.connect(remoteIdInput.value);
-                conn.on('open', () => {
-                    updateConnectionStatus(true);
-                    setupControlEvents(); // Lắng nghe sự kiện điều khiển từ xa
-                });
-                conn.on('error', (err) => {
-                    console.error('Lỗi kết nối:', err);
-                    resetConnection();
-                });
-                conn.on('data', handleDataReceived);
-            }
-        }
-
-        function handleIncomingConnection(connection) {
-            if (conn) {
-                connection.close();
-                return;
-            }
-            conn = connection;
-            updateConnectionStatus(true);
-            conn.on('close', () => {
-                resetConnection();
-            });
-            conn.on('data', handleDataReceived);
-        }
-
-        function handleDataReceived(data) {
-            if (data.type === 'stopScreenShare') {
-                stopScreenSharing();
-            } else if (data.type === 'mouseMove') {
-                simulateMouseMove(data.xPercent, data.yPercent);
-            } else if (data.type === 'mouseClick') {
-                simulateMouseClick();
-            } else if (data.type === 'keyDown') {
-                simulateKeyDown(data.key);
-            } else if (data.type === 'keyUp') {
-                simulateKeyUp(data.key);
-            }
-        }
-
-        async function handleScreenSharing() {
-            if (myStream) {
-                stopScreenSharing();
-                if (conn) {
-                    conn.send({ type: 'stopScreenShare' });
-                }
-            } else {
-                try {
-                    myStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                    if (conn) {
-                        currentCall = peer.call(conn.peer, myStream);
-                    }
-                    myStream.getVideoTracks()[0].onended = () => {
-                        stopScreenSharing();
-                        if (conn) {
-                            conn.send({ type: 'stopScreenShare' });
-                        }
-                    };
-                } catch (error) {
-                    console.error("Lỗi khi chia sẻ màn hình:", error);
-                }
-            }
-        }
-
-        function setupControlEvents() {
-            video.addEventListener('mousemove', (e) => {
-                if (conn) {
-                    const rect = video.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-
-                    conn.send({
-                        type: 'mouseMove',
-                        xPercent: x / rect.width,
-                        yPercent: y / rect.height
-                    });
-                }
-            });
-
-            video.addEventListener('click', () => {
-                if (conn) {
-                    conn.send({ type: 'mouseClick' });
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (conn) {
-                    conn.send({ type: 'keyDown', key: e.key });
-                }
-            });
-
-            document.addEventListener('keyup', (e) => {
-                if (conn) {
-                    conn.send({ type: 'keyUp', key: e.key });
-                }
-            });
-        }
-
-        function simulateMouseMove(xPercent, yPercent) {
-            const event = new MouseEvent('mousemove', {
-                clientX: window.innerWidth * xPercent,
-                clientY: window.innerHeight * yPercent
-            });
-            document.dispatchEvent(event);
-        }
-
-        function simulateMouseClick() {
-            const event = new MouseEvent('click');
-            document.dispatchEvent(event);
-        }
-
-        function simulateKeyDown(key) {
-            const event = new KeyboardEvent('keydown', { key });
-            document.dispatchEvent(event);
-        }
-
-        function simulateKeyUp(key) {
-            const event = new KeyboardEvent('keyup', { key });
-            document.dispatchEvent(event);
-        }
-
-        function updateConnectionStatus(isConnected) {
-            connectBtn.textContent = isConnected ? 'Ngừng kết nối' : 'Kết nối';
-            shareScreenBtn.disabled = !isConnected;
-            remoteIdInput.disabled = isConnected;
-
-            if (isConnected) {
-                shareScreenBtn.hidden = false;
-            }
-        }
-
-        function updateScreenShareStatus(isSharing) {
-            shareScreenBtn.textContent = isSharing ? 'Dừng chia sẻ' : 'Chia sẻ màn hình';
-        }
-
-        function resetConnection() {
-            if (conn) {
-                conn.close();
-            }
-            if (currentCall) {
-                currentCall.close();
-            }
-            conn = null;
-            currentCall = null;
-            updateConnectionStatus(false);
-            stopScreenSharing();
-        }
-
-        function stopScreenSharing() {
-            if (myStream) {
-                myStream.getTracks().forEach(track => track.stop());
-                myStream = null;
-            }
-            video.srcObject = null;
-            updateScreenShareStatus(false);
-        }
-
-        function handlePeerError(err) {
-            console.error('Lỗi Peer:', err);
-            resetConnection();
-
-            if (err.type === 'network' || err.type === 'disconnected') {
-                initPeer();
-            }
-        }
-
-        copyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            navigator.clipboard.writeText(myId.textContent)
-                .then(() => {
-                    copyBtn.textContent = 'Đã sao chép';
-                    setTimeout(() => {
-                        copyBtn.textContent = 'Sao chép';
-                    }, 3000);
-                })
-                .catch(err => console.error('Lỗi khi sao chép:', err));
-        });
-
-        form.addEventListener('submit', handleConnectionAttempt);
-
-        shareScreenBtn.addEventListener('click', handleScreenSharing);
-
-        initPeer();
-    </script>
+    // Xử lý sự kiện nhấn nút trên máy tính
+    document.getElementById('pressButton').addEventListener('click', () => {
+      // Cập nhật trạng thái nút đã được bấm trên Firebase
+      buttonPressRef.set(true);
+      
+      // Đặt lại trạng thái sau 2 giây (giống như người dùng đã bấm xong)
+      setTimeout(() => {
+        buttonPressRef.set(false);
+      }, 2000);
+    });
+  </script>
 </body>
-
 </html>
