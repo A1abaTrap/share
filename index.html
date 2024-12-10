@@ -4,22 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firebase Realtime Database</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-</head>
-<body>
-    <h1>Firebase Realtime Database Demo</h1>
 
-    <!-- Form to send data -->
-    <input type="text" id="dataInput" placeholder="Enter data" />
-    <button id="sendButton">Send Data</button>
+    <!-- Firebase CDN for version 9 or later (modular SDK) -->
+    <script type="module">
+        // Import Firebase app and Firebase Database SDK
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+        import { getDatabase, ref, set, push, onValue } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
 
-    <div id="output">
-        <h3>Data from Firebase:</h3>
-        <p id="firebaseData">Waiting for data...</p>
-    </div>
-
-    <script>
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyC9G-eM5n0RRRPLLnFfWcshTYMp24EGDWY",
@@ -33,16 +24,16 @@
         };
 
         // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database(app);
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
 
         // Function to send data to Firebase
         const sendData = () => {
             const data = document.getElementById('dataInput').value;
             if (data) {
                 // Push data to the Firebase Realtime Database
-                const dataRef = database.ref('data');
-                dataRef.push({
+                const dataRef = ref(database, 'data');
+                push(dataRef, {
                     value: data
                 }).then(() => {
                     alert("Data sent to Firebase!");
@@ -57,8 +48,8 @@
 
         // Function to read data from Firebase
         const readData = () => {
-            const dataRef = database.ref('data');
-            dataRef.on('value', (snapshot) => {
+            const dataRef = ref(database, 'data');
+            onValue(dataRef, (snapshot) => {
                 const data = snapshot.val();
                 const output = document.getElementById('firebaseData');
                 output.innerHTML = JSON.stringify(data, null, 2);
@@ -68,5 +59,17 @@
         // Call readData to show Firebase data
         readData();
     </script>
+</head>
+<body>
+    <h1>Firebase Realtime Database Demo</h1>
+
+    <!-- Form to send data -->
+    <input type="text" id="dataInput" placeholder="Enter data" />
+    <button id="sendButton">Send Data</button>
+
+    <div id="output">
+        <h3>Data from Firebase:</h3>
+        <p id="firebaseData">Waiting for data...</p>
+    </div>
 </body>
 </html>
