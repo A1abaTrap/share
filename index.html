@@ -1,46 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Setup on GitHub Pages</title>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-analytics-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Realtime Database</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
 </head>
 <body>
-  <h1>Firebase Realtime Database Test</h1>
+    <h1>Firebase Realtime Database Demo</h1>
 
-  <script>
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyBq2oxWo1r8kwVa9FIaoKKFJ2Z7F9qn7v8",
-      authDomain: "sever-6d37c.firebaseapp.com",
-      databaseURL: "https://sever-6d37c-default-rtdb.firebaseio.com",
-      projectId: "sever-6d37c",
-      storageBucket: "sever-6d37c.firebasestorage.app",
-      messagingSenderId: "289418063844",
-      appId: "1:289418063844:web:c4456f2a4e0061552921f1",
-      measurementId: "G-8P4SP6M02C"
-    };
+    <!-- Form to send data -->
+    <input type="text" id="dataInput" placeholder="Enter data" />
+    <button id="sendButton">Send Data</button>
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
+    <div id="output">
+        <h3>Data from Firebase:</h3>
+        <p id="firebaseData">Waiting for data...</p>
+    </div>
 
-    // Initialize Realtime Database
-    const database = firebase.database();
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC9G-eM5n0RRRPLLnFfWcshTYMp24EGDWY",
+            authDomain: "share-14a03.firebaseapp.com",
+            databaseURL: "https://share-14a03-default-rtdb.firebaseio.com",
+            projectId: "share-14a03",
+            storageBucket: "share-14a03.appspot.com",
+            messagingSenderId: "722957991228",
+            appId: "1:722957991228:web:9a82b6f59d3ca5a80fb239",
+            measurementId: "G-1GXYXDS7XW"
+        };
 
-    // Write data to Realtime Database
-    const dbRef = database.ref("testKey");
-    dbRef.set("Hello from Firebase Realtime Database!")
-      .then(() => console.log("Data written successfully!"))
-      .catch((error) => console.error("Error writing data:", error));
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database(app);
 
-    // Listen for data changes
-    dbRef.on("value", (snapshot) => {
-      console.log("Data updated:", snapshot.val());
-    });
-  </script>
+        // Function to send data to Firebase
+        const sendData = () => {
+            const data = document.getElementById('dataInput').value;
+            if (data) {
+                // Push data to the Firebase Realtime Database
+                const dataRef = database.ref('data');
+                dataRef.push({
+                    value: data
+                }).then(() => {
+                    alert("Data sent to Firebase!");
+                }).catch(error => {
+                    console.error("Error sending data: ", error);
+                });
+            }
+        };
+
+        // Event listener for the button
+        document.getElementById('sendButton').addEventListener('click', sendData);
+
+        // Function to read data from Firebase
+        const readData = () => {
+            const dataRef = database.ref('data');
+            dataRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                const output = document.getElementById('firebaseData');
+                output.innerHTML = JSON.stringify(data, null, 2);
+            });
+        };
+
+        // Call readData to show Firebase data
+        readData();
+    </script>
 </body>
 </html>
