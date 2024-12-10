@@ -9,7 +9,7 @@
     <script type="module">
         // Import Firebase app and Firebase Database SDK
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getDatabase, ref, set, push, onValue } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
+        import { getDatabase, ref, push, onValue, remove } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
 
         // Firebase configuration
         const firebaseConfig = {
@@ -37,27 +37,49 @@
                     value: data
                 }).then(() => {
                     alert("Data sent to Firebase!");
+                    displayData(); // Refresh the data after sending
                 }).catch(error => {
                     console.error("Error sending data: ", error);
                 });
             }
         };
 
-        // Event listener for the button
-        document.getElementById('sendButton').addEventListener('click', sendData);
-
-        // Function to read data from Firebase
-        const readData = () => {
+        // Function to read data from Firebase and display it
+        const displayData = () => {
             const dataRef = ref(database, 'data');
             onValue(dataRef, (snapshot) => {
                 const data = snapshot.val();
                 const output = document.getElementById('firebaseData');
-                output.innerHTML = JSON.stringify(data, null, 2);
+                output.innerHTML = ""; // Clear previous content
+
+                // Loop through data and display only the 'value'
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const item = data[key];
+                        const div = document.createElement('div');
+                        div.innerHTML = `${item.value} <button onclick="deleteData('${key}')">Delete</button>`;
+                        output.appendChild(div);
+                    });
+                }
             });
         };
 
-        // Call readData to show Firebase data
-        readData();
+        // Function to delete data
+        const deleteData = (key) => {
+            const dataRef = ref(database, 'data/' + key);
+            remove(dataRef).then(() => {
+                alert("Data deleted successfully!");
+                displayData(); // Refresh the data after deletion
+            }).catch(error => {
+                console.error("Error deleting data: ", error);
+            });
+        };
+
+        // Event listener for the send button
+        document.getElementById('sendButton').addEventListener('click', sendData);
+
+        // Call displayData to show Firebase data initially
+        displayData();
     </script>
 </head>
 <body>
@@ -69,7 +91,7 @@
 
     <div id="output">
         <h3>Data from Firebase:</h3>
-        <p id="firebaseData">Waiting for data...</p>
+        <div id="firebaseData">Waiting for data...</div>
     </div>
 </body>
 </html>
