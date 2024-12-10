@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firebase Realtime Database</title>
 
-    <!-- Firebase CDN for version 9 or later (modular SDK) -->
     <script type="module">
         // Import Firebase app and Firebase Database SDK
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
@@ -26,6 +25,177 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
+
+        // Show login form
+        const showLoginForm = () => {
+            const loginForm = document.createElement('div');
+            loginForm.innerHTML = `
+                <h2>Please enter your name</h2>
+                <input type="text" id="usernameInput" placeholder="Enter your name">
+                <button id="loginButton">Login</button>
+            `;
+            document.body.innerHTML = ''; // Clear body
+            document.body.appendChild(loginForm);
+
+            // Event listener for login
+            document.getElementById('loginButton').addEventListener('click', login);
+        };
+
+        // Function to handle login
+        const login = () => {
+            const username = document.getElementById('usernameInput').value;
+            if (username === "admin") {
+                showAdminPage(); // If admin, show send data page
+            } else {
+                showUserPage(); // If not admin, show read-only page
+            }
+        };
+
+        // Show admin page (send data allowed)
+        const showAdminPage = () => {
+            const pageContent = `
+                <h1>Firebase Realtime Database (Admin)</h1>
+                <div>
+                    <label for="soKgBanDau">Số Kg Ban Đầu:</label>
+                    <input type="number" id="soKgBanDau" placeholder="Nhập số kg ban đầu">
+                </div>
+                <div>
+                    <label for="soKgBinhQuan">Số Kg Bình Quân:</label>
+                    <input type="number" id="soKgBinhQuan" placeholder="Nhập số kg bình quân">
+                </div>
+                <div>
+                    <label for="soKgChet">Số Kg Chết:</label>
+                    <input type="number" id="soKgChet" placeholder="Nhập số kg chết">
+                </div>
+                <div>
+                    <label for="soKgUot">Số Kg Ướt:</label>
+                    <input type="number" id="soKgUot" placeholder="Nhập số kg ướt">
+                </div>
+                <div>
+                    <label for="soKgNo">Số Kg No:</label>
+                    <input type="number" id="soKgNo" placeholder="Nhập số kg no">
+                </div>
+                <button id="sendButton">Send Data</button>
+                <button id="deleteAllButton">Delete All Data</button>
+                <div id="output">
+                    <h3>Data from Firebase:</h3>
+                    <div id="firebaseData">Waiting for data...</div>
+                </div>
+            `;
+            document.body.innerHTML = pageContent;
+
+            // Event listener for the send button
+            document.getElementById('sendButton').addEventListener('click', sendData);
+            // Event listener for the delete all button
+            document.getElementById('deleteAllButton').addEventListener('click', deleteAllData);
+
+            // Call displayData to show Firebase data
+            displayData();
+        };
+
+        // Show user page (only view data, no send)
+        const showUserPage = () => {
+            const pageContent = `
+                <h1>Tính Toán</h1>
+                <div>
+                    <label for="soBatDau">Số đầu Random:</label>
+                    <input type="number" id="soBatDau" placeholder="Nhập số đầu">
+                </div>
+                <div>
+                    <label for="soKetThuc">Số cuối Random:</label>
+                    <input type="number" id="soKetThuc" placeholder="Nhập số cuối">
+                </div>
+                <div>
+                    <label for="motma">Một Mã:</label>
+                    <select id="motma" name="motma">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="soKgBanDau">Số Kg Ban Đầu:</label>
+                    <input type="number" id="soKgBanDau" placeholder="Nhập số kg ban đầu">
+                </div>
+                <div>
+                    <label for="soKgBinhQuan">Số Kg Bình Quân:</label>
+                    <input type="number" id="soKgBinhQuan" placeholder="Nhập số kg bình quân">
+                </div>
+                <div>
+                    <label for="soKgChet">Số Kg Chết:</label>
+                    <input type="number" id="soKgChet" placeholder="Nhập số kg chết">
+                </div>
+                <div>
+                    <label for="soKgUot">Số Kg Ướt:</label>
+                    <input type="number" id="soKgUot" placeholder="Nhập số kg ướt">
+                </div>
+                <div>
+                    <label for="soKgNo">Số Kg No:</label>
+                    <input type="number" id="soKgNo" placeholder="Nhập số kg no">
+                </div>
+                <div style="display: flex; justify-content: space-around;">
+                    <button id="btnRandom">Random Danh Sách</button>
+                    <button id="btnRefresh">Tính Lại Kết Quả</button>
+                </div>
+                <div>
+                    <label for="tongSoMa">Tổng Số Mã:</label>
+                    <input type="text" id="tongSoMa" readonly="">
+                </div>
+                <div>
+                    <label for="soRandom">Danh sách Random:</label>
+                    <input type="text" id="soRandom" readonly="" placeholder="Danh sách random sẽ hiển thị tại đây">
+                </div>
+                <div>
+                    <h2>Kết quả:</h2>
+                    <label for="tyLeHaoHut">Tỷ Lệ Hao Hụt (%):</label>
+                    <input type="text" id="tyLeHaoHut" readonly="">
+                </div>
+                <div>
+                    <label>Speed: <span id="speedValue">0.5</span></label>
+                    <input type="range" id="speedControl" min="0.2" max="2" step="0.1" value="0.2">
+                </div>
+                <div class="buttons">
+                    <button id="startPauseBtn">Start</button>
+                    <button id="stopBtn" disabled="">Stop</button>
+                </div>
+                <div class="reader">
+                    <div class="box previous" id="previousNumber"></div>
+                    <div class="box current" id="currentNumber"></div>
+                    <div class="box next" id="nextNumber"></div>
+                </div>
+                <div>
+                    <label for="tongSokg">Tổng Số Kg:</label>
+                    <input type="text" id="tongSokg" readonly="">
+                </div>
+                <div>
+                    <label for="trubi">Trừ Bì:</label>
+                    <input type="text" id="trubi" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgChet">Trừ Chết:</label>
+                    <input type="text" id="ketQuaSoKgChet" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgUot">Trừ Ướt:</label>
+                    <input type="text" id="ketQuaSoKgUot" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgNo">Trừ No:</label>
+                    <input type="text" id="ketQuaSoKgNo" readonly="">
+                </div>
+                <div>
+                    <label for="soKgThuc">Số Kg Thực:</label>
+                    <input type="text" id="soKgThuc" readonly="">
+                </div>
+                <div>
+                    <label for="socon">Số Con:</label>
+                    <input type="text" id="socon" readonly="">
+                </div>
+            `;
+            document.body.innerHTML = pageContent;
+
+            // Call displayData to show Firebase data
+            displayData();
+        };
 
         // Function to send data to Firebase
         const sendData = () => {
@@ -57,41 +227,28 @@
                     Object.keys(data).forEach(key => {
                         const item = data[key];
                         const div = document.createElement('div');
-                        div.innerHTML = `${item.value} <button onclick="deleteData('${key}')">Delete</button>`;
+                        div.innerHTML = `${item.value}`; // Display only the value without delete button
                         output.appendChild(div);
                     });
                 }
             });
         };
 
-        // Function to delete data
-        const deleteData = (key) => {
-            const dataRef = ref(database, 'data/' + key);
+        // Function to delete all data (only for admin)
+        const deleteAllData = () => {
+            const dataRef = ref(database, 'data');
             remove(dataRef).then(() => {
-                alert("Data deleted successfully!");
+                alert("All data deleted successfully!");
                 displayData(); // Refresh the data after deletion
             }).catch(error => {
-                console.error("Error deleting data: ", error);
+                console.error("Error deleting all data: ", error);
             });
         };
 
-        // Event listener for the send button
-        document.getElementById('sendButton').addEventListener('click', sendData);
-
-        // Call displayData to show Firebase data initially
-        displayData();
+        // Show the login form on page load
+        showLoginForm();
     </script>
 </head>
 <body>
-    <h1>Firebase Realtime Database Demo</h1>
-
-    <!-- Form to send data -->
-    <input type="text" id="dataInput" placeholder="Enter data" />
-    <button id="sendButton">Send Data</button>
-
-    <div id="output">
-        <h3>Data from Firebase:</h3>
-        <div id="firebaseData">Waiting for data...</div>
-    </div>
 </body>
 </html>
