@@ -181,7 +181,7 @@ input[type="range"] {
         // Function to handle login
         const login = () => {
             const username = document.getElementById('usernameInput').value;
-            if (username === "admin") {
+            if (username === "admin" || username === "Admin") {
                 showAdminPage(); // If admin, show send data page
             } else {
                 showUserPage(username); // If not admin, show user page
