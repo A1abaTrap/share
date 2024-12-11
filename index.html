@@ -181,7 +181,7 @@ input[type="range"] {
         // Function to handle login
         const login = () => {
             const username = document.getElementById('usernameInput').value;
-            if (username === "admin" || username === "Admin") {
+            if (username === "admin" || username==="Admin") {
                 showAdminPage(); // If admin, show send data page
             } else {
                 showUserPage(username); // If not admin, show user page
@@ -192,6 +192,14 @@ input[type="range"] {
         const showAdminPage = () => {
             const pageContent = `
                 <h1>Firebase Realtime Database (Admin)</h1>
+              <div>
+                  <label for="soBatDau">Số đầu Random:</label>
+                  <input type="number" id="soBatDau" placeholder="Nhập số đầu">
+              </div>
+              <div>
+                  <label for="soKetThuc">Số cuối Random:</label>
+                  <input type="number" id="soKetThuc" placeholder="Nhập số cuối">
+              </div>                
                 <div>
                     <label for="soKgBanDau">Số Kg Ban Đầu:</label>
                     <input type="number" id="soKgBanDau" placeholder="Nhập số kg ban đầu">
@@ -537,6 +545,8 @@ btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.va
         // Function to send data to Firebase
         const sendData = () => {
             const data = {
+                soBatDau: document.getElementById('soBatDau').value,
+                soKetThuc: document.getElementById('soKetThuc').value,
                 soKgBanDau: document.getElementById('soKgBanDau').value,
                 soKgBinhQuan: document.getElementById('soKgBinhQuan').value,
                 soKgChet: document.getElementById('soKgChet').value,
@@ -544,7 +554,7 @@ btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.va
                 soKgNo: document.getElementById('soKgNo').value
             };
 
-            if (data.soKgBanDau && data.soKgBinhQuan && data.soKgChet && data.soKgUot && data.soKgNo) {
+            if (data.soBatDau && data.soKetThuc && data.soKgBanDau && data.soKgBinhQuan && data.soKgChet && data.soKgUot && data.soKgNo) {
                 const dataRef = ref(database, 'data');
                 remove(dataRef) // Remove old data first
                     .then(() => {
@@ -576,7 +586,7 @@ btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.va
                     Object.keys(data).forEach(key => {
                         const item = data[key];
                         const div = document.createElement('div');
-                        div.innerHTML = `Số Kg Ban Đầu: ${item.soKgBanDau}, Số Kg Bình Quân: ${item.soKgBinhQuan}, Số Kg Chết: ${item.soKgChet}, Số Kg Ướt: ${item.soKgUot}, Số Kg No: ${item.soKgNo}`;
+                        div.innerHTML = `Số đầu random: ${item.soBatDau},Số cuối random: ${item.soKetThuc}, Số Kg Ban Đầu: ${item.soKgBanDau}, Số Kg Bình Quân: ${item.soKgBinhQuan}| Số Kg Chết: ${item.soKgChet}| Số Kg Ướt: ${item.soKgUot}| Số Kg No: ${item.soKgNo}`;
                         output.appendChild(div);
                     });
                 }
@@ -597,6 +607,8 @@ btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.va
                         const userData = Object.values(data)[0]; // Get first item, or apply user-specific logic
 
                         // Fill the input fields with the data
+                        document.getElementById('soBatDau').value = userData.soBatDau;
+                        document.getElementById('soKetThuc').value =userData.soKetThuc;
                         document.getElementById('soKgBanDau').value = userData.soKgBanDau;
                         document.getElementById('soKgBinhQuan').value = userData.soKgBinhQuan;
                         document.getElementById('soKgChet').value = userData.soKgChet;
