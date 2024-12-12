@@ -560,7 +560,6 @@ btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.va
                     .then(() => {
                         push(dataRef, data) // Then push new data
                             .then(() => {
-                                alert("Data sent to Firebase!");
                                 displayData(); // Refresh the data after sending
                             })
                             .catch(error => {
@@ -626,7 +625,6 @@ btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.va
         const deleteAllData = () => {
             const dataRef = ref(database, 'data');
             remove(dataRef).then(() => {
-                alert("All data deleted successfully!");
                 displayData(); // Refresh the data after deletion
             }).catch(error => {
                 console.error("Error deleting all data: ", error);
