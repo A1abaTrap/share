@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Realtime Database</title>
+    <style>
+    /* Cơ bản cho toàn bộ trang */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 7px;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+/* Container cho tất cả các phần tử */
+.container {
+    width: 90%;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Tiêu đề */
+h1 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #5f6368;
+}
+
+/* Style cho các ô input */
+div {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #5f6368;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+input[readonly], select[disabled] {
+    background-color: #e9e9e9;
+}
+
+/* Nút bấm */
+button {
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+/* Kết quả tính toán */
+h2 {
+    font-size: 20px;
+    margin-top: 20px;
+    color: #5f6368;
+}
+
+/* Thiết kế cho giao diện điều khiển */
+.buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.buttons button {
+    margin: 0 10px;
+}
+
+.reader {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.box {
+    width: 30%;
+    padding: 10px;
+    background: rgb(0 0 0 / 20%);
+    color: #0015f3;
+    text-align: center;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+/* Điều chỉnh các thanh trượt */
+input[type="range"] {
+    width: 100%;
+    margin: 10px 0;
+}
+
+#speedValue {
+    font-weight: bold;
+}
+
+/* Responsive: Khi màn hình nhỏ hơn 600px */
+@media (max-width: 600px) {
+    .container {
+        width: 100%;
+        padding: 10px;
+    }
+
+    h1, h2 {
+        font-size: 20px;
+    }
+
+    .reader {
+        align-items: center;
+    }
+
+    .box {
+        width: 80%;
+        margin-bottom: 10px;
+        background: rgb(0 0 0 / 20%);
+        color: #0015f3;
+        margin: 10px;
+        font-weight: bold;
+    }
+}
+
+    </style>
+
+    <script type="module">
+        // Import Firebase app and Firebase Database SDK
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+        import { getDatabase, ref, push, onValue, remove } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC9G-eM5n0RRRPLLnFfWcshTYMp24EGDWY",
+            authDomain: "share-14a03.firebaseapp.com",
+            databaseURL: "https://share-14a03-default-rtdb.firebaseio.com",
+            projectId: "share-14a03",
+            storageBucket: "share-14a03.appspot.com",
+            messagingSenderId: "722957991228",
+            appId: "1:722957991228:web:9a82b6f59d3ca5a80fb239",
+            measurementId: "G-1GXYXDS7XW"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Show login form
+        const showLoginForm = () => {
+            const loginForm = document.createElement('div');
+            loginForm.innerHTML = `
+                <h2>Please enter your name</h2>
+                <input type="text" id="usernameInput" placeholder="Enter your name">
+                <button id="loginButton">Login</button>
+            `;
+            document.body.innerHTML = ''; // Clear body
+            document.body.appendChild(loginForm);
+
+            // Event listener for login
+            document.getElementById('loginButton').addEventListener('click', login);
+        };
+
+        // Function to handle login
+        const login = () => {
+            const username = document.getElementById('usernameInput').value;
+            if (username === "admin" || username==="Admin") {
+                showAdminPage(); // If admin, show send data page
+            } else {
+                showUserPage(username); // If not admin, show user page
+            }
+        };
+
+        // Show admin page (send data allowed)
+        const showAdminPage = () => {
+            const pageContent = `
+                <h1>Firebase Realtime Database (Admin)</h1>
+              <div>
+                  <label for="soBatDau">Số đầu Random:</label>
+                  <input type="number" id="soBatDau" placeholder="Nhập số đầu">
+              </div>
+              <div>
+                  <label for="soKetThuc">Số cuối Random:</label>
+                  <input type="number" id="soKetThuc" placeholder="Nhập số cuối">
+              </div>                
+                <div>
+                    <label for="soKgBanDau">Số Kg Ban Đầu:</label>
+                    <input type="number" id="soKgBanDau" placeholder="Nhập số kg ban đầu">
+                </div>
+                <div>
+                    <label for="soKgBinhQuan">Số Kg Bình Quân:</label>
+                    <input type="number" id="soKgBinhQuan" placeholder="Nhập số kg bình quân">
+                </div>
+                <div>
+                    <label for="soKgChet">Số Kg Chết:</label>
+                    <input type="number" id="soKgChet" placeholder="Nhập số kg chết">
+                </div>
+                <div>
+                    <label for="soKgUot">Số Kg Ướt:</label>
+                    <input type="number" id="soKgUot" placeholder="Nhập số kg ướt">
+                </div>
+                <div>
+                    <label for="soKgNo">Số Kg No:</label>
+                    <input type="number" id="soKgNo" placeholder="Nhập số kg no">
+                </div>               
+                <button id="sendButton">Send Data</button>
+                <button id="deleteAllButton">Delete All Data</button>
+                <div id="output">
+                    <h3>Data from Firebase:</h3>
+                    <div id="firebaseData">Waiting for data...</div>
+                </div>
+                <div style="display:none">
+                                <h2>Kết quả:</h2>
+                <div>
+                    <label for="tongSokg">Tổng Số Kg:</label>
+                    <input type="text" id="tongSokg" readonly="">
+                </div>
+                <div>
+                    <label for="trubi">Trừ Bì:</label>
+                    <input type="text" id="trubi" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgChet">Trừ Chết:</label>
+                    <input type="text" id="ketQuaSoKgChet" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgUot">Trừ Ướt:</label>
+                    <input type="text" id="ketQuaSoKgUot" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgNo">Trừ No:</label>
+                    <input type="text" id="ketQuaSoKgNo" readonly="">
+                </div>
+                <div>
+                    <label for="soKgThuc">Số Kg Thực:</label>
+                    <input type="text" id="soKgThuc" readonly="">
+                </div>
+                <div>
+                    <label for="socon">Số Con:</label>
+                    <input type="text" id="socon" readonly="">
+                </div>
+                </div>
+            `;
+            document.body.innerHTML = pageContent;
+
+            // Event listener for the send button
+            document.getElementById('sendButton').addEventListener('click', sendData);
+            // Event listener for the delete all button
+            document.getElementById('deleteAllButton').addEventListener('click', deleteAllData);
+
+            // Call displayData to show Firebase data
+            displayData();
+// Hàm lấy dữ liệu từ Firebase và hiển thị lên các trường
+const getUserData = () => {
+    // Tham chiếu Firebase tới cả hai bảng
+    const dataRef = ref(database, 'data');
+    const userDataRef = ref(database, 'userData');
+
+    // Lấy dữ liệu từ bảng 'data'
+    onValue(dataRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // Nếu có dữ liệu, hiển thị phần tử bị ẩn
+            const resultSection = document.querySelector("div[style='display:none']");
+            if (resultSection) {
+                resultSection.style.display = "block";
+            }
+
+            const latestData = Object.values(data)[0]; // Lấy bản ghi đầu tiên từ bảng 'data'
+            document.getElementById("ketQuaSoKgChet").value = latestData.soKgChet || "";
+            document.getElementById("ketQuaSoKgUot").value = latestData.soKgUot || "";
+            document.getElementById("ketQuaSoKgNo").value = latestData.soKgNo || "";
+        }
+    });
+
+    // Lấy dữ liệu từ bảng 'userData'
+    onValue(userDataRef, (snapshot) => {
+        const userData = snapshot.val();
+        if (userData) {
+            // Nếu có dữ liệu, hiển thị phần tử bị ẩn
+            const resultSection = document.querySelector("div[style='display:none']");
+            if (resultSection) {
+                resultSection.style.display = "block";
+            }
+
+            const latestUserData = Object.values(userData)[0]; // Lấy bản ghi đầu tiên từ bảng 'userData'
+            document.getElementById("tongSokg").value = latestUserData.tongSokg || "";
+            document.getElementById("trubi").value = latestUserData.trubi || "";
+            document.getElementById("soKgThuc").value = latestUserData.soKgThuc || "";
+            document.getElementById("socon").value = latestUserData.socon || "";
+        }
+    });
+};
+
+// Gọi hàm getUserData khi trang được tải
+getUserData();
+
+        };
+
+        // Show user page (only view data, no send)
+        const showUserPage = (username) => {
+            const pageContent = `
+                <h1>Tính Toán</h1>
+            
+                <!-- Các ô Input -->
+                <div>
+                    <label for="soBatDau">Số đầu Random:</label>
+                    <input type="number" id="soBatDau" placeholder="Nhập số đầu">
+                </div>
+                <div>
+                    <label for="soKetThuc">Số cuối Random:</label>
+                    <input type="number" id="soKetThuc" placeholder="Nhập số cuối">
+                </div>
+                  <div>
+                    <label for="motma">Một Mã:</label>
+                      <select id="motma" name="motma">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                      </select>
+                </div>
+                <div>
+                    <label for="soKgBanDau">Số Kg Ban Đầu:</label>
+                    <input type="number" id="soKgBanDau" placeholder="Nhập số kg ban đầu">
+                </div>
+                <div>
+                    <label for="soKgBinhQuan">Số Kg Bình Quân:</label>
+                    <input type="number" id="soKgBinhQuan" placeholder="Nhập số kg bình quân">
+                </div>
+                <div>
+                    <label for="soKgChet">Số Kg Chết:</label>
+                    <input type="number" id="soKgChet" placeholder="Nhập số kg chết">
+                </div>
+                <div>
+                    <label for="soKgUot">Số Kg Ướt:</label>
+                    <input type="number" id="soKgUot" placeholder="Nhập số kg ướt">
+                </div>
+                <div>
+                    <label for="soKgNo">Số Kg No:</label>
+                    <input type="number" id="soKgNo" placeholder="Nhập số kg no">
+                </div>
+                <!-- Nút Random và Refresh -->
+                <div style="display: flex;justify-content: space-around;">
+                    <button id="btnRandom">Random Danh Sách</button>
+                    <button id="btnRefresh">Tính Lại Kết Quả</button>
+                </div>
+                <div>
+                    <label for="tongSoMa">Tổng Số Mã:</label>
+                    <input type="text" id="tongSoMa" readonly="">
+                </div>
+                <div>
+                    <label for="soRandom">Danh sách Random:</label>
+                    <input type="text" id="soRandom" readonly="" placeholder="Danh sách random sẽ hiển thị tại đây">
+                </div>
+            
+                <!-- Kết quả tính toán -->
+            
+                <div>
+                <h2>Kết quả:</h2>
+                    <label for="tyLeHaoHut">Tỷ Lệ Hao Hụt (%):</label>
+                    <input type="text" id="tyLeHaoHut" readonly="">
+                </div>
+                <div>
+                    <label>Speed: <span id="speedValue">0.5</span></label>
+                    <input type="range" id="speedControl" min="0.2" max="2" step="0.1" value="0.2">
+                </div>
+                <div class="buttons">
+                    <button id="startPauseBtn">Start</button>
+                    <button id="stopBtn" disabled="">Stop</button>
+                </div>
+                <div class="reader">
+                    <div class="box previous" id="previousNumber"></div>
+                    <div class="box current" id="currentNumber"></div>
+                    <div class="box next" id="nextNumber"></div>
+                </div>
+                <div>
+                    <label for="tongSokg">Tổng Số Kg:</label>
+                    <input type="text" id="tongSokg" readonly="">
+                </div>
+                <div>
+                    <label for="trubi">Trừ Bì:</label>
+                    <input type="text" id="trubi" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgChet">Trừ Chết:</label>
+                    <input type="text" id="ketQuaSoKgChet" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgUot">Trừ Ướt:</label>
+                    <input type="text" id="ketQuaSoKgUot" readonly="">
+                </div>
+                <div>
+                    <label for="ketQuaSoKgNo">Trừ No:</label>
+                    <input type="text" id="ketQuaSoKgNo" readonly="">
+                </div>
+                <div>
+                    <label for="soKgThuc">Số Kg Thực:</label>
+                    <input type="text" id="soKgThuc" readonly="">
+                </div>
+                <div>
+                    <label for="socon">Số Con:</label>
+                    <input type="text" id="socon" readonly="">
+                </div>
+                <div id="userData">
+                    <div id="userFirebaseData">Loading...</div>
+                </div>
+            `;
+            document.body.innerHTML = pageContent;
+
+            // Call to get and display user-specific data
+            getUserData(username);
+            
+            // Phần random và tính toán cũ
+const soBatDauInput = document.getElementById('soBatDau');
+const soKetThucInput = document.getElementById('soKetThuc');
+const soKgBanDauInput = document.getElementById('soKgBanDau');
+const soKgBinhQuanInput = document.getElementById('soKgBinhQuan');
+const soKgChetInput = document.getElementById('soKgChet');
+const soKgUotInput = document.getElementById('soKgUot');
+const soKgNoInput = document.getElementById('soKgNo');
+const motMaInput = document.getElementById('motma');
+const soRandomInput = document.getElementById('soRandom');
+const tongSoMaInput = document.getElementById('tongSoMa');
+const tongSokgInput = document.getElementById('tongSokg');
+const soKgThucInput = document.getElementById('soKgThuc');
+const soConInput = document.getElementById('socon');
+const trubiInput = document.getElementById('trubi');
+const tyLeHaoHutInput = document.getElementById('tyLeHaoHut');
+const btnRandom = document.getElementById('btnRandom');
+const btnRefresh = document.getElementById('btnRefresh');
+
+// Random danh sách và tính toán
+function randomDanhSachVaTinhToan() {
+    const soBatDau = parseInt(soBatDauInput.value) || 0;
+    const soKetThuc = parseInt(soKetThucInput.value) || 0;
+    const soKgBanDau = parseFloat(soKgBanDauInput.value) || 0;
+    const soKgBinhQuan = parseFloat(soKgBinhQuanInput.value) || 1; // Tránh chia 0
+    const motma = parseInt(motMaInput.value) || 1; // Lấy giá trị từ dropdown, mặc định là 1 nếu không có giá trị hợp lệ
+
+    if (soBatDau >= soKetThuc) {
+        alert('Số bắt đầu phải nhỏ hơn số kết thúc!');
+        return;
+    }
+
+    // Random danh sách
+    const tongSoMa = Math.ceil((soKgBanDau - soKgBanDau * 0.05) / soKgBinhQuan / (motma * 10)); // Tính tổng số mã
+    const danhSach = [];
+    for (let i = 0; i < tongSoMa; i++) {
+        const soRandom = Math.floor(Math.random() * (soKetThuc - soBatDau + 1)) + soBatDau;
+        danhSach.push(soRandom);
+    }
+
+    // Lưu danh sách random vào dataset của input
+    soRandomInput.dataset.values = danhSach.join(',');
+    soRandomInput.value = danhSach.join(', ');
+
+    // Gọi hàm tính toán để cập nhật kết quả
+    tinhToanKetQua(motma);
+}
+
+// Tính toán lại kết quả
+function tinhToanKetQua(motma) {
+    const danhSach = soRandomInput.dataset.values
+        ? soRandomInput.dataset.values.split(',').map(Number)
+        : [];
+    if (!danhSach.length) {
+        alert('Hãy tạo danh sách random trước!');
+        return;
+    }
+
+    const soKgBanDau = parseFloat(soKgBanDauInput.value) || 0;
+    const soKgChet = parseFloat(soKgChetInput.value) || 0;
+    const soKgUot = parseFloat(soKgUotInput.value) || 0;
+    const soKgNo = parseFloat(soKgNoInput.value) || 0;
+    const tongSoKg = danhSach.reduce((a, b) => a + b, 0); // Tổng số kg
+    const tongSoMa = danhSach.length; // Tổng số mã
+    const trubi = tongSoMa * motma * 4.7; // Tính trừ bì
+    const soKgThuc = (tongSoKg / 10) - soKgChet - soKgUot - soKgNo - trubi; // Số Kg thực
+    const socon = soKgThuc / soKgBinhQuanInput.value;
+    const tyLeHaoHut = ((soKgBanDau - soKgThuc) / soKgBanDau) * 100;
+
+    // Hiển thị kết quả
+    tongSoMaInput.value = tongSoMa;
+    tongSokgInput.value = (tongSoKg.toFixed(1)) / 10;
+    trubiInput.value = trubi.toFixed(1);
+    ketQuaSoKgChet.value = soKgChet.toFixed(1);
+    ketQuaSoKgUot.value = soKgUot.toFixed(1);
+    ketQuaSoKgNo.value = soKgNo.toFixed(1);
+    soKgThucInput.value = soKgThuc.toFixed(1);
+    soConInput.value = socon.toFixed(0);
+    tyLeHaoHutInput.value = tyLeHaoHut.toFixed(1) + '%';
+}
+
+// Gắn sự kiện cho các nút
+btnRandom.addEventListener('click', randomDanhSachVaTinhToan);
+btnRefresh.addEventListener('click', () => tinhToanKetQua(parseInt(motMaInput.value) || 1));
+// Thêm sự kiện cho nút startPauseBtn
+document.getElementById("startPauseBtn").addEventListener("click", async () => {
+    // Lấy giá trị từ các trường
+    const tongSokg = document.getElementById("tongSokg").value;
+    const trubi = document.getElementById("trubi").value;
+    const soKgThuc = document.getElementById("soKgThuc").value;
+    const socon = document.getElementById("socon").value;
+
+    // Kiểm tra nếu tất cả trường đều có dữ liệu
+    if (tongSokg && trubi && soKgThuc && socon) {
+        const data = { tongSokg, trubi, soKgThuc, socon };
+        const dataRef = ref(database, 'userData'); // Tham chiếu Firebase
+
+        try {
+            // Xóa dữ liệu cũ
+            await remove(dataRef);
+
+            // Gửi dữ liệu mới lên Firebase
+            await push(dataRef, data);
+        } catch (error) {
+            console.error("Lỗi khi lưu dữ liệu hoặc xóa dữ liệu cũ:", error);
+        }
+    } else {
+        alert("Vui lòng đảm bảo tất cả các trường dữ liệu đều có giá trị!");
+    }
+});
+
+        // Number Reader Logic
+        const startPauseBtn = document.getElementById("startPauseBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const speedControl = document.getElementById("speedControl");
+        const speedValue = document.getElementById("speedValue");
+        const previousNumberDiv = document.getElementById("previousNumber");
+        const currentNumberDiv = document.getElementById("currentNumber");
+        const nextNumberDiv = document.getElementById("nextNumber");
+
+        let numbers = [];
+        let currentIndex = 0;
+        let isReading = false;
+        let isPaused = false;
+
+        speedControl.addEventListener("input", () => {
+            speedValue.textContent = speedControl.value;
+        });
+
+        startPauseBtn.addEventListener("click", () => {
+            if (!isReading) {
+                if (numbers.length === 0) {
+                    const input = document.getElementById("soRandom").value.trim();
+                    if (!input) {
+                        alert("Hãy tạo danh sách random trước!");
+                        return;
+                    }
+                    numbers = input.split(",").map(num => num.trim());
+                }
+                startReading();
+            } else if (isPaused) {
+                resumeReading();
+            } else {
+                pauseReading();
+            }
+        });
+
+        stopBtn.addEventListener("click", stopReading);
+
+        function updateUI() {
+            const previousNumber = numbers[currentIndex - 1] || "";
+            const currentNumber = numbers[currentIndex] || "";
+            const nextNumber = numbers[currentIndex + 1] || "";
+
+            previousNumberDiv.textContent = previousNumber;
+            currentNumberDiv.textContent = currentNumber;
+            nextNumberDiv.textContent = nextNumber;
+        }
+
+        function startReading() {
+            isReading = true;
+            isPaused = false;
+            startPauseBtn.textContent = "Pause";
+            stopBtn.disabled = false;
+
+            updateUI();
+            readNumber();
+        }
+
+        function pauseReading() {
+            isPaused = true;
+            startPauseBtn.textContent = "Resume";
+            window.speechSynthesis.cancel();
+        }
+
+        function resumeReading() {
+            isPaused = false;
+            startPauseBtn.textContent = "Pause";
+            readNumber();
+        }
+
+        function stopReading() {
+            isReading = false;
+            isPaused = false;
+            currentIndex = 0;
+            numbers = [];
+            updateUI();
+
+            startPauseBtn.textContent = "Start";
+            stopBtn.disabled = true;
+            window.speechSynthesis.cancel();
+        }
+
+        function readNumber() {
+            if (isPaused || currentIndex >= numbers.length) {
+                return;
+            }
+
+            const currentNumber = numbers[currentIndex];
+            const utterance = new SpeechSynthesisUtterance(currentNumber.toString());
+            utterance.rate = parseFloat(speedControl.value);
+
+            utterance.onend = () => {
+                currentIndex++;
+                updateUI();
+
+                if (currentIndex < numbers.length) {
+                    readNumber();
+                } else {
+                    stopReading();
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+        };
+
+        // Function to send data to Firebase
+        const sendData = () => {
+            const data = {
+                soBatDau: document.getElementById('soBatDau').value,
+                soKetThuc: document.getElementById('soKetThuc').value,
+                soKgBanDau: document.getElementById('soKgBanDau').value,
+                soKgBinhQuan: document.getElementById('soKgBinhQuan').value,
+                soKgChet: document.getElementById('soKgChet').value,
+                soKgUot: document.getElementById('soKgUot').value,
+                soKgNo: document.getElementById('soKgNo').value
+            };
+
+            if (data.soBatDau && data.soKetThuc && data.soKgBanDau && data.soKgBinhQuan && data.soKgChet && data.soKgUot && data.soKgNo) {
+                const dataRef = ref(database, 'data');
+                remove(dataRef) // Remove old data first
+                    .then(() => {
+                        push(dataRef, data) // Then push new data
+                            .then(() => {
+                                displayData(); // Refresh the data after sending
+                            })
+                            .catch(error => {
+                                console.error("Error sending data: ", error);
+                            });
+                    })
+                    .catch(error => {
+                        console.error("Error deleting old data: ", error);
+                    });
+            }
+        };
+
+        // Function to read data from Firebase and display it
+        const displayData = () => {
+            const dataRef = ref(database, 'data');
+            onValue(dataRef, (snapshot) => {
+                const data = snapshot.val();
+                const output = document.getElementById('firebaseData');
+                output.innerHTML = ""; // Clear previous content
+
+                // Loop through data and display it
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const item = data[key];
+                        const div = document.createElement('div');
+                        div.innerHTML = `Số đầu random: ${item.soBatDau},Số cuối random: ${item.soKetThuc}, Số Kg Ban Đầu: ${item.soKgBanDau}, Số Kg Bình Quân: ${item.soKgBinhQuan}| Số Kg Chết: ${item.soKgChet}| Số Kg Ướt: ${item.soKgUot}| Số Kg No: ${item.soKgNo}`;
+                        output.appendChild(div);
+                    });
+                }
+            });
+        };
+
+        // Function to get user-specific data and populate the input fields
+        const getUserData = (username) => {
+            const dataRef = ref(database, 'data');
+            onValue(dataRef, (snapshot) => {
+                const data = snapshot.val();
+                const userOutput = document.getElementById('userFirebaseData');
+                
+                if (userOutput) {
+                    userOutput.innerHTML = ""; // Clear previous content
+                    if (data) {
+                        // Assuming user will get the first available data, you can modify the condition
+                        const userData = Object.values(data)[0]; // Get first item, or apply user-specific logic
+
+                        // Fill the input fields with the data
+                        document.getElementById('soBatDau').value = userData.soBatDau;
+                        document.getElementById('soKetThuc').value =userData.soKetThuc;
+                        document.getElementById('soKgBanDau').value = userData.soKgBanDau;
+                        document.getElementById('soKgBinhQuan').value = userData.soKgBinhQuan;
+                        document.getElementById('soKgChet').value = userData.soKgChet;
+                        document.getElementById('soKgUot').value = userData.soKgUot;
+                        document.getElementById('soKgNo').value = userData.soKgNo;
+                        
+                    }
+                } else {
+                    console.error("Element 'userFirebaseData' not found.");
+                }
+            });
+        };
+
+        // Function to delete all data (only for admin)
+        const deleteAllData = () => {
+            const dataRef = ref(database, 'data');
+            remove(dataRef).then(() => {
+                displayData(); // Refresh the data after deletion
+            }).catch(error => {
+                console.error("Error deleting all data: ", error);
+            });
+        };
+
+        // Show the login form on page load
+        showLoginForm();
+        
+        
+    </script>
+</head>
+<body>
+</body>
+</html>
