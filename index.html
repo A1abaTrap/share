@@ -169,9 +169,11 @@ input[type="range"] {
         const showLoginForm = () => {
             const loginForm = document.createElement('div');
             loginForm.innerHTML = `
+                <form action="/login" method="post">                
                 <h2>Please enter your name</h2>
                 <input type="text" id="usernameInput" placeholder="Enter your name">
                 <button id="loginButton">Login</button>
+                </form>
             `;
             document.body.innerHTML = ''; // Clear body
             document.body.appendChild(loginForm);
